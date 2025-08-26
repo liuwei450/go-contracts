@@ -1,0 +1,29 @@
+masterdb:
+  driver: 'mysql'    #数据库类型 mysql
+  user: root    # MySQL 用户名
+  password: 123456    # MySQL 密码
+  host: 127.0.0.1       #MySQL 地址
+  port: 3306             # MySQL 端口
+  name: user_db      # MySQL 数据库名称
+  config: 'charset=utf8&parseTime=True&loc=Local'
+  sslmode: ''       # MySQL 可以不填或空字符串
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: 3600
+
+redis:
+  host: 127.0.0.1
+  port: 6379
+  password: ''
+  max_idle: 10
+  max_active: 100
+  idle_timeout: 30
+
+migrationdir: "file://migrations"  #数据库迁移文件目录
+
+# ===== 新增 HTTP 服务器配置 =====
+httpserver:
+  addr: ":8080"           # 服务监听地址
+  read_timeout: 10        # 读取超时（秒）
+  write_timeout: 10       # 写入超时（秒）
+  idle_timeout: 30        # 空闲超时（秒）
