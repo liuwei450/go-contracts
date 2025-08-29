@@ -1,43 +1,101 @@
 package httputil
 
 import (
-	"go-contracts/config"
-	"go-contracts/util"
+	"context"
+	"errors"
+	"fmt"
+	"net"
 	"net/http"
+	"sync/atomic"
 	"time"
 )
 
-// Server HTTP服务器包装器
-type Server struct {
-	*http.Server
+const (
+	DefaultReadTimeout  = 10 * time.Second
+	DefaultWriteTimeout = 10 * time.Second
+	DefaultIdleTimeout  = 30 * time.Second
+)
+
+type HTTPServer struct {
+	listener net.Listener
+	srv      *http.Server
+	closed   atomic.Bool
 }
 
-// New 从配置创建HTTP服务器
-func New(cfg *config.HTTPServerConfig, handler http.Handler) (*Server, error) {
-	// 使用配置的地址，默认使用:8080
-	addr := cfg.Addr
-	if addr == "" {
-		addr = ":8080"
-	}
+type HTTPOption func(srv *HTTPServer) error
 
-	server := &http.Server{
-		Addr:         addr,
-		Handler:      handler,
-		ReadTimeout:  time.Duration(cfg.ReadTimeout) * time.Second,
-		WriteTimeout: time.Duration(cfg.WriteTimeout) * time.Second,
-		IdleTimeout:  time.Duration(cfg.IdleTimeout) * time.Second,
-	}
-
-	util.Log.Info("HTTP server initialized", "address", addr)
-	return &Server{server}, nil
+func StartServerWithDefaults(addr string, handler http.Handler) (*HTTPServer, error) {
+	return StartHTTPServer(addr, handler,
+		WithTimeouts(DefaultReadTimeout, DefaultWriteTimeout, DefaultIdleTimeout),
+	)
 }
 
-// Start 启动HTTP服务器（非阻塞）
-func (s *Server) Start() error {
+func StartHTTPServer(addr string, handler http.Handler, opts ...HTTPOption) (*HTTPServer, error) {
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to bind to address %q: %w", addr, err)
+	}
+
+	srvCtx, srvCancel := context.WithCancel(context.Background())
+	srv := &http.Server{
+		Handler: handler,
+		BaseContext: func(listener net.Listener) context.Context {
+			return srvCtx
+		},
+	}
+	out := &HTTPServer{listener: listener, srv: srv}
+
+	for _, opt := range opts {
+		if err := opt(out); err != nil {
+			srvCancel()
+			return nil, errors.Join(fmt.Errorf("failed to apply HTTP option: %w", err), listener.Close())
+		}
+	}
+
 	go func() {
-		if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			util.Log.Error("HTTP server failed", "error", err)
+		err := out.srv.Serve(listener)
+		srvCancel()
+		if errors.Is(err, http.ErrServerClosed) {
+			out.closed.Store(true)
+		} else {
+			panic(fmt.Errorf("unexpected serve error: %w", err))
 		}
 	}()
+
+	return out, nil
+}
+
+func WithTimeouts(read, write, idle time.Duration) HTTPOption {
+	return func(srv *HTTPServer) error {
+		srv.srv.ReadTimeout = read
+		srv.srv.WriteTimeout = write
+		srv.srv.IdleTimeout = idle
+		return nil
+	}
+}
+
+func (s *HTTPServer) Closed() bool {
+	return s.closed.Load()
+}
+
+func (s *HTTPServer) Stop(ctx context.Context) error {
+	if err := s.Shutdown(ctx); err != nil {
+		if errors.Is(err, ctx.Err()) {
+			return s.Close()
+		}
+		return err
+	}
 	return nil
+}
+
+func (s *HTTPServer) Shutdown(ctx context.Context) error {
+	return s.srv.Shutdown(ctx)
+}
+
+func (s *HTTPServer) Close() error {
+	return s.srv.Close()
+}
+
+func (s *HTTPServer) Addr() net.Addr {
+	return s.listener.Addr()
 }

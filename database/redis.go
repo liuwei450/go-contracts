@@ -3,6 +3,7 @@ package database
 import (
 	"fmt"
 	"github.com/gomodule/redigo/redis"
+	"github.com/urfave/cli/v2"
 	"go-contracts/config"
 	"go-contracts/util"
 	"time"
@@ -14,7 +15,7 @@ type Redis struct {
 }
 
 // New 从配置创建Redis连接池
-func NewRedis(cfg *config.RedisConfig) (*Redis, error) {
+func NewRedis(c *cli.Context, cfg *config.RedisConfig) (*Redis, error) {
 	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 
 	pool := &redis.Pool{
@@ -36,6 +37,16 @@ func NewRedis(cfg *config.RedisConfig) (*Redis, error) {
 			return redis.Dial("tcp", addr, opts...)
 		},
 		TestOnBorrow: func(conn redis.Conn, t time.Time) error {
+			if c.Context != nil {
+				// 4. 使用上下文进行健康检查
+				select {
+				case <-c.Context.Done():
+					return c.Context.Err()
+				default:
+					_, err := conn.Do("PING")
+					return err
+				}
+			}
 			_, err := conn.Do("PING")
 			return err
 		},
@@ -49,7 +60,7 @@ func NewRedis(cfg *config.RedisConfig) (*Redis, error) {
 		return nil, fmt.Errorf("redis connection failed: %w", err)
 	}
 
-	util.Log.Info("Redis connection pool initialized", "address", addr)
+	util.Log.Info("Redis 链接成功", "address", addr)
 	return &Redis{Pool: pool}, nil
 }
 

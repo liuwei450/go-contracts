@@ -38,10 +38,17 @@ type DBConfig struct {
 
 // HTTPServerConfig HTTP服务器配置
 type HTTPServerConfig struct {
-	Addr         string `yaml:"addr"`          // 监听地址（如 ":8080"）
 	ReadTimeout  int    `yaml:"read_timeout"`  // 读取超时（秒）
 	WriteTimeout int    `yaml:"write_timeout"` // 写入超时（秒）
 	IdleTimeout  int    `yaml:"idle_timeout"`  // idle超时（秒）
+	Host         string `yaml:"host"`
+	Port         string `yaml:"port"`
+}
+
+// IndexerConfig 索引服务配置
+type IndexerConfig struct {
+	Interval int `yaml:"interval" env:"INDEXER_INTERVAL"` // 同步间隔（秒）
+	// 其他配置：如区块链 RPC 地址、合约地址等
 }
 
 type Config struct {
@@ -50,6 +57,7 @@ type Config struct {
 	HTTPServer   HTTPServerConfig `yaml:"httpserver"`   // HTTP服务器配置
 	Redis        RedisConfig      `yaml:"redis"`        // Redis配置
 	Kafka        KafkaConfig      `yaml:"kafka"`        // Kafka配置
+	Indexer      IndexerConfig    `yaml:"indexer"`      // 索引服务配置
 }
 
 const defaultConfigFileName = "config.yaml"
@@ -92,10 +100,11 @@ func LoadConfig(ctx *cli.Context) (*Config, error) {
 	v.SetDefault("redis.host", "localhost")
 	v.SetDefault("redis.port", 6379)
 	v.SetDefault("redis.password", "")
-	v.SetDefault("kafka.brokers", []string{"localhost:9092"})
+	//v.SetDefault("kafka.brokers", []string{"localhost:9092"})
 	v.SetDefault("migrationdir", "file://migrations")
 	// ===== HTTP 服务器默认值 =====
-	v.SetDefault("httpserver.addr", ":8080")     // 默认端口 8080
+	v.SetDefault("httpserver.Host", ":localhost")
+	v.SetDefault("httpserver.Port", ":8080")     // 默认端口 8080
 	v.SetDefault("httpserver.read_timeout", 10)  // 默认读取超时 10秒
 	v.SetDefault("httpserver.write_timeout", 10) // 默认写入超时 10秒
 	v.SetDefault("httpserver.idle_timeout", 30)  // 默认空闲超时 30秒

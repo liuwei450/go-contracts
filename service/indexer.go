@@ -2,10 +2,13 @@ package service
 
 import (
 	"context"
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/urfave/cli/v2"
+	"go-contracts/database"
+
 	"go-contracts/config"
 	"sync/atomic"
 
-	"github.com/urfave/cli/v2"
 	"go-contracts/util"
 	"time"
 )
@@ -23,6 +26,21 @@ func NewIndexerService(c *cli.Context, cfg *config.Config, shutdown context.Canc
 	interval := c.Int("interval")
 	if interval <= 0 {
 		interval = 10 // 默认 10 秒
+	}
+	//1.初始化外部依赖：区块链客户端
+
+	//2.初始化外部依赖：数据库连接
+	_, err := database.NewDb(c.Context, &cfg.MasterDB)
+	if err != nil {
+		log.Error("初始化数据库失败", err)
+		return nil, err
+	}
+	// 3. 创建核心组件：同步器（从区块链拉取事件）
+
+	//4.创建核心组件：处理器（处理事件并入库）
+	//5. 组装索引服务实例（包含所有组件和依赖）
+	if err != nil {
+		return nil, err
 	}
 	return &IndexerService{
 		ticker: time.NewTicker(time.Duration(interval) * time.Second),

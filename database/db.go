@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"fmt"
-	"github.com/urfave/cli/v2"
 	"go-contracts/config"
 	"go-contracts/util"
 	"gorm.io/driver/mysql"
@@ -20,7 +19,7 @@ type DB struct {
 
 // New 从config.DBConfig创建数据库连接
 // 直接使用config包的DBConfig，避免重复定义配置结构
-func New(ctx context.Context, cfg *config.DBConfig) (*DB, error) {
+func NewDb(ctx context.Context, cfg *config.DBConfig) (*DB, error) {
 	// 1. 根据数据库驱动类型初始化GORM
 	var dialector gorm.Dialector
 	switch cfg.Driver {
@@ -56,19 +55,6 @@ func New(ctx context.Context, cfg *config.DBConfig) (*DB, error) {
 
 	util.Log.Info("数据库连接成功", "driver", cfg.Driver, "host", cfg.Host, "dbname", cfg.Name)
 	return &DB{db}, nil
-}
-
-// FromCLIContext 从命令行上下文创建数据库连接
-// 流程：加载全局配置 → 提取MasterDB配置 → 初始化数据库
-func FromCLIContext(ctx context.Context, c *cli.Context) (*DB, error) {
-	// 1. 调用config包加载全局配置（已实现）
-	globalCfg, err := config.LoadConfig(c)
-	if err != nil {
-		return nil, fmt.Errorf("加载全局配置失败: %w", err)
-	}
-
-	// 2. 直接使用globalCfg.MasterDB（config.DBConfig类型）
-	return New(ctx, &globalCfg.MasterDB)
 }
 
 // Close 关闭数据库连接
