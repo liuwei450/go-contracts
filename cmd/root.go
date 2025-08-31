@@ -41,6 +41,16 @@ func runIndexer(ctx *cli.Context, shutdown context.CancelCauseFunc) (cycle.Servi
 	return service.NewIndexerService(ctx, cfg, shutdown)
 }
 
+func runAirdropWatcher(ctx *cli.Context, shutdown context.CancelCauseFunc) (cycle.Service, error) {
+	log.Info("run airdrop event watcher")
+	cfg, err := config.LoadConfig(ctx)
+	if err != nil {
+		log.Error("failed to load config", "err", err)
+		return nil, err
+	}
+	return service.NewAirdropWatcher(ctx, cfg, shutdown)
+}
+
 func runApi(ctx *cli.Context, _ context.CancelCauseFunc) (cycle.Service, error) {
 	log.Info("running api...")
 	cfg, err := config.LoadConfig(ctx)
@@ -85,9 +95,16 @@ func StartServer(gitCommit, gitDate string) *cli.App {
 					},
 				}...),
 				Action: cycle.LifecycleCmd(runIndexer), // 绑定索引服务
-			},
-			{
-				Name:        "migrate",
+		},
+		{
+			Name:        "airdrop-watch",
+			Usage:       "启动空投事件监听服务",
+			Description: "监听空投合约的AirdropERC20和AirdropBNB事件并保存到数据库",
+			Flags:       globalFlags,
+			Action:      cycle.LifecycleCmd(runAirdropWatcher), // 绑定空投监听服务
+		},
+		{
+			Name:        "migrate",
 				Usage:       "执行数据库迁移",
 				Description: "初始化或更新数据库表结构",
 				Flags:       globalFlags,

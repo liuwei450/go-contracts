@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"go-contracts/config"
+	"go-contracts/models"
 	"go-contracts/util"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
@@ -53,7 +54,16 @@ func NewDb(ctx context.Context, cfg *config.DBConfig) (*DB, error) {
 		return nil, fmt.Errorf("数据库Ping失败: %w", err)
 	}
 
+	// 5. 自动迁移表结构
+	if err := db.AutoMigrate(
+		&models.Block{},
+		&models.AirdropEvent{},
+	); err != nil {
+		return nil, fmt.Errorf("数据库表结构迁移失败: %w", err)
+	}
+
 	util.Log.Info("数据库连接成功", "driver", cfg.Driver, "host", cfg.Host, "dbname", cfg.Name)
+	util.Log.Info("数据库表结构已自动创建")
 	return &DB{db}, nil
 }
 

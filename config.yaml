@@ -28,3 +28,7 @@ httpserver:
   read_timeout: 10        # 读取超时（秒）
   write_timeout: 10       # 写入超时（秒）
   idle_timeout: 30        # 空闲超时（秒）
+
+# ===== 索引服务配置 =====
+indexer:
+  interval: 10        # 同步间隔（秒）

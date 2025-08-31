@@ -2,20 +2,9 @@ package router
 
 import (
 	"encoding/json"
-	"net/http"
 	"go-contracts/service"
 	"go-contracts/util"
-)
-
-const (
-	// ERC20相关API路由
-	ERC20_ALLOWANCE     = "/api/erc20/allowance"
-	ERC20_APPROVE       = "/api/erc20/approve"
-	ERC20_TRANSFER      = "/api/erc20/transfer"
-	ERC20_TRANSFER_FROM = "/api/erc20/transfer_from"
-	ERC20_BALANCE       = "/api/erc20/balance"
-	ERC20_TOTAL_SUPPLY  = "/api/erc20/total_supply"
-	ERC20_TOKEN_INFO    = "/api/erc20/token_info"
+	"net/http"
 )
 
 // ERC20Allowance 处理ERC20授权查询请求

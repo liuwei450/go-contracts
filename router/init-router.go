@@ -10,8 +10,21 @@ import (
 )
 
 const (
-	HealthPath  = "/healthz"
-	AIRDROP_BNB = "/api/airdrop_bnb"
+	// 健康检查路径
+	HealthPath = "/api/health"
+
+	// ERC20相关API路由
+	ERC20_ALLOWANCE     = "/api/erc20/allowance"
+	ERC20_APPROVE       = "/api/erc20/approve"
+	ERC20_TRANSFER      = "/api/erc20/transfer"
+	ERC20_TRANSFER_FROM = "/api/erc20/transfer_from"
+	ERC20_BALANCE       = "/api/erc20/balance"
+	ERC20_TOTAL_SUPPLY  = "/api/erc20/total_supply"
+	ERC20_TOKEN_INFO    = "/api/erc20/token_info"
+
+	// 空投相关路由
+	AIRDROP_BNB   = "/api/airdrop_bnb"
+	AIRDROP_ERC20 = "/api/airdrop_erc20"
 )
 
 func InitRouter(conf config.HTTPServerConfig, cfg *config.Config, svc service.Service) *chi.Mux {
@@ -37,17 +50,21 @@ func InitRouter(conf config.HTTPServerConfig, cfg *config.Config, svc service.Se
 		w.Write([]byte("OK"))
 	})
 
-	// 6. 注册业务路由（从 router 包引入）
-	router.Get(AIRDROP_BNB, h.AirdropBnb)
 	
+	
+	// 注册空投相关路由
+	router.Get(AIRDROP_BNB, h.AirdropBnb)// BNB空投
+	router.Post(AIRDROP_ERC20, h.AirdropERC20)// ERC20空投
+
 	// 注册ERC20相关路由
-	router.Post(ERC20_ALLOWANCE, h.ERC20Allowance)
-	router.Post(ERC20_APPROVE, h.ERC20Approve)
-	router.Post(ERC20_TRANSFER, h.ERC20Transfer)
-	router.Post(ERC20_TRANSFER_FROM, h.ERC20TransferFrom)
-	router.Post(ERC20_BALANCE, h.ERC20Balance)
-	router.Post(ERC20_TOTAL_SUPPLY, h.ERC20TotalSupply)
-	router.Post(ERC20_TOKEN_INFO, h.ERC20TokenInfo)
+	router.Post(ERC20_ALLOWANCE, h.ERC20Allowance)// 查询授权
+	router.Post(ERC20_APPROVE, h.ERC20Approve)// 授权
+	router.Post(ERC20_TRANSFER, h.ERC20Transfer)// 转账
+	router.Post(ERC20_TRANSFER_FROM, h.ERC20TransferFrom)// 从授权地址转账
+	router.Post(ERC20_BALANCE, h.ERC20Balance)// 查询余额
+	router.Post(ERC20_TOTAL_SUPPLY, h.ERC20TotalSupply)// 查询总供应量
+	router.Post(ERC20_TOKEN_INFO, h.ERC20TokenInfo)// 查询代币信息
+	
 
 	return router
 }
