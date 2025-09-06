@@ -68,9 +68,16 @@ type ERC20BalanceParams struct {
 	Account string `json:"account"` // 账户地址
 }
 
+// 设置空投合约授权地址的参数
+type AirdropSetGovParams struct {
+	NewGov string `json:"new_gov"` // 新的授权地址
+}
+
 type Service interface {
 	AirdropBnb(ctx context.Context, params AirdropParams) error
 	AirdropERC20(ctx context.Context, params AirdropParams) error
+	AirdropSetGov(ctx context.Context, params AirdropSetGovParams) error
+	AirdropGov(ctx context.Context) (string, error)
 	// 区块相关方法
 	GetBlockByNumber(ctx context.Context, blockNumber uint64) (*models.Block, error)
 	GetBlockByHash(ctx context.Context, blockHash string) (*models.Block, error)
@@ -389,4 +396,90 @@ func (s *serviceImpl) ERC20TokenInfo(ctx context.Context, params ERC20ContractPa
 			TotalSupply: totalSupply.String(),
 		},
 		nil
+}
+
+// AirdropSetGov 设置空投合约授权地址
+func (s *serviceImpl) AirdropSetGov(ctx context.Context, params AirdropSetGovParams) error {
+	// 1. 连接到区块链节点
+	client, err := ethclient.Dial(config.RAW_URL)
+	if err != nil {
+		return fmt.Errorf("连接区块链节点失败: %w", err)
+	}
+	defer client.Close()
+
+	// 2. 解析私钥
+	privateKey, err := crypto.HexToECDSA(config.PRIVATE_KEY)
+	if err != nil {
+		return fmt.Errorf("解析私钥失败: %w", err)
+	}
+
+	// 3. 创建交易选项
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(97)) // 97是BSC测试网的链ID
+	if err != nil {
+		return fmt.Errorf("创建交易选项失败: %w", err)
+	}
+
+	// 4. 获取当前Gas价格
+	gasPrice, err := client.SuggestGasPrice(ctx)
+	if err != nil {
+		// 如果获取失败，使用默认值
+		gasPrice = big.NewInt(10000000000) // 10 Gwei
+		util.Log.Warn("获取Gas价格失败，使用默认值", "error", err)
+	}
+	auth.GasPrice = gasPrice
+	auth.GasLimit = 3000000 // 设置Gas上限
+
+	// 5. 解析合约地址
+	contractAddress := common.HexToAddress(config.AIRDROP_CONTRACT_ADDRESS)
+
+	// 6. 创建合约实例
+	airdropContract, err := contract.NewAirdropTransactor(contractAddress, client)
+	if err != nil {
+		return fmt.Errorf("创建空投合约实例失败: %w", err)
+	}
+
+	// 7. 验证并解析新的授权地址
+	if !common.IsHexAddress(params.NewGov) {
+		return fmt.Errorf("无效的以太坊地址: %s", params.NewGov)
+	}
+	newGovAddr := common.HexToAddress(params.NewGov)
+
+	// 8. 调用setGov方法
+	tx, err := airdropContract.SetGov(auth, newGovAddr)
+	if err != nil {
+		return fmt.Errorf("调用setGov方法失败: %w", err)
+	}
+
+	// 9. 记录交易信息
+	util.Log.Info("设置空投合约授权地址交易已发送", "txHash", tx.Hash().Hex(), "newGov", params.NewGov)
+
+	return nil
+}
+
+// AirdropGov 查询空投合约授权地址
+func (s *serviceImpl) AirdropGov(ctx context.Context) (string, error) {
+	// 1. 连接到区块链节点
+	client, err := ethclient.Dial(config.RAW_URL)
+	if err != nil {
+		return "", fmt.Errorf("连接区块链节点失败: %w", err)
+	}
+	defer client.Close()
+
+	// 2. 解析合约地址
+	contractAddress := common.HexToAddress(config.AIRDROP_CONTRACT_ADDRESS)
+
+	// 3. 创建合约实例（只读）
+	airdropContract, err := contract.NewAirdropCaller(contractAddress, client)
+	if err != nil {
+		return "", fmt.Errorf("创建空投合约只读实例失败: %w", err)
+	}
+
+	// 4. 调用gov方法查询授权地址
+	govAddr, err := airdropContract.Gov(&bind.CallOpts{Context: ctx})
+	if err != nil {
+		return "", fmt.Errorf("查询授权地址失败: %w", err)
+	}
+
+	// 5. 返回授权地址
+	return govAddr.Hex(), nil
 }

@@ -24,7 +24,7 @@ migrationdir: "file://migrations"  #数据库迁移文件目录
 # ===== 新增 HTTP 服务器配置 =====
 httpserver:
   host: 127.0.0.1
-  port: 8081           # 服务监听地址
+  port: 8090           # 服务监听地址
   read_timeout: 10        # 读取超时（秒）
   write_timeout: 10       # 写入超时（秒）
   idle_timeout: 30        # 空闲超时（秒）

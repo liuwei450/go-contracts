@@ -16,12 +16,6 @@ import (
 	"net"
 	"sync"
 	"sync/atomic"
-	"time"
-)
-
-const (
-	HealthPath      = "/health"
-	shutdownTimeout = 5 * time.Second
 )
 
 // ApiService HTTP 服务实现 cycle.Service 接口
@@ -56,14 +50,14 @@ func (a *API) initFromConfig(c *cli.Context, cfg *config.Config) error {
 	}
 	// 创建请求参数验证器
 	var v util.Validator
-	
+
 	// 初始化区块链客户端
 	ethClient, err := node.DialEthClient(*c, config.RAW_URL)
 	if err != nil {
 		return fmt.Errorf("连接区块链节点失败: %w", err)
 	}
 	// 创建业务服务实例，传入区块对应链信息
-	svc := service.New(v,  ethClient)
+	svc := service.New(v, ethClient)
 	// 初始化路由
 	a.router = router.InitRouter(cfg.HTTPServer, cfg, svc)
 
